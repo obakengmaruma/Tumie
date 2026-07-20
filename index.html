@@ -335,9 +335,68 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.15); }
         }
+
+        /* --- Music Button (added) --- */
+        .music-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(26, 26, 30, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--accent);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            font-size: 1.1rem;
+            transition: transform 0.3s ease, background 0.3s ease;
+        }
+
+        .music-btn:hover {
+            transform: scale(1.1);
+            background: rgba(26, 26, 30, 0.95);
+        }
+
+        /* --- Ambient Floating Heart Canvas (added) --- */
+        #ambient-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* --- Interactive Click Heart Particle (added) --- */
+        .click-heart {
+            position: fixed;
+            pointer-events: none;
+            color: var(--accent);
+            font-size: 1.2rem;
+            z-index: 9999;
+            animation: clickHeartAnim 1.2s ease-out forwards;
+        }
+
+        @keyframes clickHeartAnim {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.6); }
+            100% { opacity: 0; transform: translate(-50%, -120px) scale(1.6); }
+        }
     </style>
 </head>
 <body>
+
+    <!-- Ambient Canvas for Background Effects (added) -->
+    <canvas id="ambient-canvas"></canvas>
+
+    <!-- Background Audio Element & Button (added) -->
+    <audio id="bg-music" loop src="audio/music.mp3"></audio>
+    <button class="music-btn" id="music-toggle" onclick="toggleMusic()" title="Toggle Background Music">🎵</button>
 
     <!-- Landing / Hero -->
     <section id="hero">
@@ -516,6 +575,9 @@
             document.querySelectorAll('#hero .reveal').forEach(el => el.classList.add('active'));
             // Fade in the hero photo circles too (added)
             document.querySelectorAll('#hero .hero-photo').forEach(el => el.classList.add('active'));
+            
+            // Initialize background canvas animation (added)
+            initAmbientCanvas();
         });
 
         // Reveal the main layout cleanly
@@ -528,6 +590,9 @@
             
             // Initialize the Scroll Observer for lazy animations
             initScrollObserver();
+
+            // Auto-play music when experience opens (added)
+            playMusic();
         }
 
         // Intersection Observer to fade elements in elegantly as she scrolls
@@ -549,6 +614,114 @@
             }, observerOptions);
 
             document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        }
+
+        /* --- Audio Controls Logic (added) --- */
+        let isMusicPlaying = false;
+        function playMusic() {
+            const audio = document.getElementById('bg-music');
+            if (audio) {
+                audio.play().then(() => {
+                    isMusicPlaying = true;
+                    document.getElementById('music-toggle').textContent = '🎶';
+                }).catch(() => {
+                    // Autoplay prevented by browser, user can toggle manually
+                });
+            }
+        }
+
+        function toggleMusic() {
+            const audio = document.getElementById('bg-music');
+            const btn = document.getElementById('music-toggle');
+            if (!audio) return;
+            if (isMusicPlaying) {
+                audio.pause();
+                btn.textContent = '🎵';
+                isMusicPlaying = false;
+            } else {
+                audio.play();
+                btn.textContent = '🎶';
+                isMusicPlaying = true;
+            }
+        }
+
+        /* --- Touch / Swipe Support for Lightbox (added) --- */
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const lightboxEl = document.getElementById('lightbox');
+
+        lightboxEl.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        lightboxEl.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        }, { passive: true });
+
+        function handleSwipe() {
+            const swipeDistance = touchEndX - touchStartX;
+            if (Math.abs(swipeDistance) > 50) {
+                if (swipeDistance < 0) changeSlide(1);  // Swipe left -> next
+                else changeSlide(-1);                    // Swipe right -> prev
+            }
+        }
+
+        /* --- Click Particle Burst Effect (added) --- */
+        document.addEventListener('click', (e) => {
+            // Avoid spawning burst when clicking interactive UI buttons
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+
+            const heart = document.createElement('span');
+            heart.className = 'click-heart';
+            heart.textContent = '♥';
+            heart.style.left = e.clientX + 'px';
+            heart.style.top = e.clientY + 'px';
+            document.body.appendChild(heart);
+
+            setTimeout(() => heart.remove(), 1200);
+        });
+
+        /* --- Ambient Floating Heart Background Canvas (added) --- */
+        function initAmbientCanvas() {
+            const canvas = document.getElementById('ambient-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            const particles = Array.from({ length: 20 }, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 12 + 8,
+                speedY: Math.random() * 0.4 + 0.2,
+                opacity: Math.random() * 0.3 + 0.1,
+                swing: Math.random() * 0.02
+            }));
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    p.y -= p.speedY;
+                    p.x += Math.sin(p.y * p.swing) * 0.5;
+
+                    if (p.y < -20) {
+                        p.y = canvas.height + 20;
+                        p.x = Math.random() * canvas.width;
+                    }
+
+                    ctx.fillStyle = `rgba(255, 77, 109, ${p.opacity})`;
+                    ctx.font = `${p.size}px sans-serif`;
+                    ctx.fillText('♥', p.x, p.y);
+                });
+                requestAnimationFrame(animate);
+            }
+            animate();
         }
     </script>
 </body>
