@@ -200,6 +200,111 @@
             color: var(--text-muted);
         }
 
+        /* --- Slideshow Lightbox (added) --- */
+        .media-card.has-slideshow {
+            cursor: pointer;
+        }
+
+        .lightbox-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 5, 6, 0.97);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lightbox-overlay.active {
+            display: flex;
+        }
+
+        .lightbox-slide-wrap {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lightbox-slide-wrap img {
+            max-width: 92vw;
+            max-height: 88vh;
+            object-fit: contain;
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .lightbox-slide-wrap img.active {
+            opacity: 1;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 24px;
+            right: 32px;
+            font-size: 2rem;
+            color: var(--text-main);
+            background: none;
+            border: none;
+            cursor: pointer;
+            z-index: 1001;
+            line-height: 1;
+        }
+
+        .lightbox-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: var(--text-main);
+            font-size: 1.6rem;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1001;
+            transition: background 0.3s ease;
+        }
+
+        .lightbox-arrow:hover {
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .lightbox-prev {
+            left: 20px;
+        }
+
+        .lightbox-next {
+            right: 20px;
+        }
+
+        .lightbox-counter {
+            position: absolute;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            letter-spacing: 1px;
+            z-index: 1001;
+        }
+
+        @media (max-width: 700px) {
+            .lightbox-arrow {
+                width: 40px;
+                height: 40px;
+                font-size: 1.3rem;
+            }
+            .lightbox-close {
+                top: 16px;
+                right: 20px;
+            }
+        }
+
         /* --- Message Section --- */
         #message-section {
             margin-top: 120px;
@@ -256,7 +361,7 @@
         <section class="gallery-grid">
             
             <!-- Card 1: Image -->
-            <div class="media-card reveal">
+            <div class="media-card reveal has-slideshow" onclick="openLightbox('sunsetDrive')">
                 <div class="media-wrapper">
                     <!-- Replace with your image path -->
                     <img src="pics/Picture3.png" alt="Photo of her">
@@ -295,7 +400,116 @@
 
     </main>
 
+    <!-- Slideshow Lightbox (added) -->
+    <div class="lightbox-overlay" id="lightbox">
+        <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+        <button class="lightbox-arrow lightbox-prev" onclick="changeSlide(-1)">&#10094;</button>
+        <div class="lightbox-slide-wrap" id="lightbox-slide-wrap"></div>
+        <button class="lightbox-arrow lightbox-next" onclick="changeSlide(1)">&#10095;</button>
+        <div class="lightbox-counter" id="lightbox-counter"></div>
+    </div>
+
     <script>
+        // Slideshow image sets for lightbox-enabled cards (added)
+        // Add / rename paths here - each key matches an onclick="openLightbox('key')" on a card
+        const slideshows = {
+            sunsetDrive: [
+                'pics/slide1.jpg',
+                'pics/slide2.jpg',
+                'pics/slide3.jpg',
+                'pics/slide4.jpg',
+                'pics/slide5.jpg',
+                'pics/slide6.jpg',
+                'pics/slide7.jpg'
+            ]
+        };
+
+        let currentSlideshow = [];
+        let currentSlideIndex = 0;
+        let autoplayTimer = null;
+
+        function openLightbox(key) {
+            currentSlideshow = slideshows[key] || [];
+            if (currentSlideshow.length === 0) return;
+
+            currentSlideIndex = 0;
+            renderSlides();
+
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            startAutoplay();
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.remove('active');
+            document.body.style.overflow = '';
+            stopAutoplay();
+        }
+
+        function renderSlides() {
+            const wrap = document.getElementById('lightbox-slide-wrap');
+            wrap.innerHTML = '';
+            currentSlideshow.forEach((src, i) => {
+                const img = document.createElement('img');
+                img.src = src;
+                img.alt = 'Memory ' + (i + 1);
+                if (i === currentSlideIndex) img.classList.add('active');
+                wrap.appendChild(img);
+            });
+            updateCounter();
+        }
+
+        function showSlide(index) {
+            const imgs = document.querySelectorAll('#lightbox-slide-wrap img');
+            imgs.forEach(img => img.classList.remove('active'));
+            if (imgs[index]) imgs[index].classList.add('active');
+            currentSlideIndex = index;
+            updateCounter();
+        }
+
+        function changeSlide(direction) {
+            const total = currentSlideshow.length;
+            const nextIndex = (currentSlideIndex + direction + total) % total;
+            showSlide(nextIndex);
+            restartAutoplay();
+        }
+
+        function updateCounter() {
+            const counter = document.getElementById('lightbox-counter');
+            counter.textContent = (currentSlideIndex + 1) + ' / ' + currentSlideshow.length;
+        }
+
+        function startAutoplay() {
+            stopAutoplay();
+            autoplayTimer = setInterval(() => changeSlide(1), 4000);
+        }
+
+        function stopAutoplay() {
+            if (autoplayTimer) clearInterval(autoplayTimer);
+        }
+
+        function restartAutoplay() {
+            stopAutoplay();
+            startAutoplay();
+        }
+
+        // Keyboard navigation for the lightbox
+        document.addEventListener('keydown', (e) => {
+            const lightbox = document.getElementById('lightbox');
+            if (!lightbox.classList.contains('active')) return;
+            if (e.key === 'ArrowRight') changeSlide(1);
+            if (e.key === 'ArrowLeft') changeSlide(-1);
+            if (e.key === 'Escape') closeLightbox();
+        });
+
+        // Click on the dark backdrop (not the image/arrows) to close
+        document.getElementById('lightbox').addEventListener('click', (e) => {
+            if (e.target.id === 'lightbox') closeLightbox();
+        });
+
         // Trigger initial fade-ins on load
         window.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('#hero .reveal').forEach(el => el.classList.add('active'));
