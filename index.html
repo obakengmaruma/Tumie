@@ -279,31 +279,6 @@
             }
         }
 
-        .lightbox-close {
-            position: absolute;
-            top: 24px;
-            right: 32px;
-            font-size: 1.8rem;
-            color: var(--text-main);
-            background: rgba(255, 255, 255, 0.08);
-            border: none;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 1001;
-            line-height: 1;
-            transition: background 0.3s ease, transform 0.3s ease;
-        }
-
-        .lightbox-close:hover {
-            background: rgba(255, 255, 255, 0.18);
-            transform: scale(1.08);
-        }
-
         .lightbox-arrow {
             position: absolute;
             top: 50%;
@@ -348,10 +323,6 @@
                 width: 40px;
                 height: 40px;
                 font-size: 1.3rem;
-            }
-            .lightbox-close {
-                top: 16px;
-                right: 20px;
             }
         }
 
@@ -459,7 +430,7 @@
             <img src="pics/Picture1.png" alt="Photo of her">
         </div>
 
-        <h1 class="reveal">HAAPPPPPYYY BIRTHDAYYYY <span>TUMIEEEE</span>.</h1>
+        <h1 class="reveal">HAAPPPPPYYY BIRTHDAYYYY<span>TUMIEEE</span>.</h1>
         <button class="cta-btn reveal" onclick="startExperience()">Open Code</button>
     </section>
 
@@ -511,7 +482,6 @@
 
     <!-- Slideshow Lightbox (added) -->
     <div class="lightbox-overlay" id="lightbox">
-        <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
         <button class="lightbox-arrow lightbox-prev" onclick="changeSlide(-1)">&#10094;</button>
         <div class="lightbox-slide-wrap" id="lightbox-slide-wrap"></div>
         <button class="lightbox-arrow lightbox-next" onclick="changeSlide(1)">&#10095;</button>
@@ -529,14 +499,15 @@
                 'pics/show/Picture7.jpg',
                 'pics/show/Picture8.jpg',
                 'pics/show/Picture9.jpg',
-                'pics/show/vid5.mp4'
+                'pics/show/vid.mp4'
                 
             ]
         };
 
         let currentSlideshow = [];
         let currentSlideIndex = 0;
-        let autoplayTimer = null;
+        let autoplayTimeout = null;
+        let currentVideoEndHandler = null;
 
         function openLightbox(key) {
             currentSlideshow = slideshows[key] || [];
@@ -558,11 +529,15 @@
             startAutoplay();
         }
 
+        function startAutoplay() {
+            scheduleAutoAdvance();
+        }
+
         function closeLightbox() {
             const lightbox = document.getElementById('lightbox');
             lightbox.classList.remove('active');
             document.body.style.overflow = '';
-            stopAutoplay();
+            clearAutoplayHandlers();
             // Stop any playing video slide (added)
             document.querySelectorAll('#lightbox-slide-wrap video').forEach(v => v.pause());
         }
@@ -582,7 +557,7 @@
                     el.src = src;
                     el.controls = true;
                     el.playsInline = true;
-                    el.loop = true;
+                    el.muted = true;
                 } else {
                     el = document.createElement('img');
                     el.src = src;
@@ -621,7 +596,7 @@
             const total = currentSlideshow.length;
             const nextIndex = (currentSlideIndex + direction + total) % total;
             showSlide(nextIndex);
-            restartAutoplay();
+            scheduleAutoAdvance();
         }
 
         function updateCounter() {
@@ -634,7 +609,7 @@
             const burst = document.createElement('div');
             burst.className = 'heart-burst';
 
-            const heartCount = 23;
+            const heartCount = 12;
             for (let i = 0; i < heartCount; i++) {
                 const heart = document.createElement('span');
                 heart.className = 'heart-particle';
@@ -651,27 +626,46 @@
             setTimeout(() => burst.remove(), 1700);
         }
 
-        function autoAdvance() {
-            const total = currentSlideshow.length;
-            spawnHeartBurst();
-            // let the hearts bloom for a beat, then swap the image underneath them
-            setTimeout(() => {
-                showSlide((currentSlideIndex + 1) % total);
-            }, 550);
+        function scheduleAutoAdvance() {
+            clearAutoplayHandlers();
+
+            const slides = document.querySelectorAll('#lightbox-slide-wrap img, #lightbox-slide-wrap video');
+            const activeEl = slides[currentSlideIndex];
+            const isLastSlide = currentSlideIndex === slides.length - 1;
+
+            const proceed = () => {
+                if (isLastSlide) {
+                    // Slideshow is finished - close it automatically (added)
+                    spawnHeartBurst();
+                    autoplayTimeout = setTimeout(() => closeLightbox(), 550);
+                } else {
+                    spawnHeartBurst();
+                    autoplayTimeout = setTimeout(() => {
+                        showSlide(currentSlideIndex + 1);
+                        scheduleAutoAdvance();
+                    }, 550);
+                }
+            };
+
+            if (activeEl && activeEl.tagName === 'VIDEO') {
+                // Let the video play all the way through before moving on (added)
+                currentVideoEndHandler = proceed;
+                activeEl.addEventListener('ended', currentVideoEndHandler);
+            } else {
+                autoplayTimeout = setTimeout(proceed, 4000);
+            }
         }
 
-        function startAutoplay() {
-            stopAutoplay();
-            autoplayTimer = setInterval(autoAdvance, 4000);
-        }
-
-        function stopAutoplay() {
-            if (autoplayTimer) clearInterval(autoplayTimer);
-        }
-
-        function restartAutoplay() {
-            stopAutoplay();
-            startAutoplay();
+        function clearAutoplayHandlers() {
+            if (autoplayTimeout) {
+                clearTimeout(autoplayTimeout);
+                autoplayTimeout = null;
+            }
+            if (currentVideoEndHandler) {
+                const activeVideo = document.querySelector('#lightbox-slide-wrap video.active');
+                if (activeVideo) activeVideo.removeEventListener('ended', currentVideoEndHandler);
+                currentVideoEndHandler = null;
+            }
         }
 
         // Keyboard navigation for the lightbox
