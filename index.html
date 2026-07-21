@@ -448,9 +448,9 @@
 
     <!-- Main Background Track: Superpowers -->
     <audio id="bg-music" loop src="track/Superpowers.mp3"></audio>
-    <!-- Change the src path below to set your custom birthday song -->
+    <!-- Birthday song path -->
     <audio id="birthday-song" src="track/Happy Birthday.mp3"></audio>
-   <!-- <button class="music-btn" id="music-toggle" onclick="toggleMusic()" title="Toggle Background Music">🎵</button>
+    <button class="music-btn" id="music-toggle" onclick="toggleMusic()" title="Toggle Background Music">🎵</button>
 
     <!-- Landing / Hero -->
     <section id="hero">
@@ -948,11 +948,12 @@
 
         function playMusic() {
             const audio = document.getElementById('bg-music');
+            const btn = document.getElementById('music-toggle');
             if (audio) {
                 audio.volume = 0;
                 audio.play().then(() => {
                     isMusicPlaying = true;
-                    document.getElementById('music-toggle').textContent = '🎶';
+                    if (btn) btn.textContent = '🎶';
 
                     // Smoothly fade audio volume up to 1 over 2 seconds
                     if (fadeInterval) clearInterval(fadeInterval);
@@ -968,8 +969,8 @@
                         }
                     }, 100);
 
-                }).catch(() => {
-                    // Autoplay prevented by browser, user can toggle manually
+                }).catch((err) => {
+                    console.log("Autoplay waiting for user interaction:", err);
                 });
             }
         }
@@ -982,12 +983,12 @@
 
             if (isMusicPlaying) {
                 audio.pause();
-                btn.textContent = '🎵';
+                if (btn) btn.textContent = '🎵';
                 isMusicPlaying = false;
             } else {
                 audio.volume = 1;
                 audio.play();
-                btn.textContent = '🎶';
+                if (btn) btn.textContent = '🎶';
                 isMusicPlaying = true;
             }
         }
