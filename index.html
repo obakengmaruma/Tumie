@@ -336,6 +336,7 @@
             position: relative;
             width: 100%;
             height: 100%;
+            overflow: hidden;
         }
 
         .burst-slide-wrap img {
@@ -447,6 +448,8 @@
 
     <!-- Background Audio Element & Button (added) -->
     <audio id="bg-music" loop src="audio/music.mp3"></audio>
+    <!-- Happy Birthday song, played when the photo burst starts (added) -->
+    <audio id="birthday-song" src="audio/happy-birthday.mp3"></audio>
     <button class="music-btn" id="music-toggle" onclick="toggleMusic()" title="Toggle Background Music">🎵</button>
 
     <!-- Landing / Hero -->
@@ -543,11 +546,11 @@
         // Add / rename paths here - each key matches an onclick="openPhotoBurst('key')" on a card
         const burstShows = {
             birthdayBurst: [
-                'pics/burst/1.jpeg', 
-                'pics/burst/2.jpeg', 
+                'pics/burst/1.jpeg',
+                'pics/burst/2.jpeg',
                 'pics/burst/3.jpeg',
-                'pics/burst/4.jpeg', 
-                'pics/burst/5.jpeg', 
+                'pics/burst/4.jpeg',
+                'pics/burst/5.jpeg',
                 'pics/burst/6.jpeg',
                 'pics/burst/7.jpeg',
                 'pics/burst/8.jpeg',
@@ -559,7 +562,7 @@
                 'pics/burst/14.jpeg',
                 'pics/burst/15.jpeg',
                 'pics/burst/16.jpeg',
-                'pics/burst/17.jpeg', 
+                'pics/burst/17.jpeg',
                 'pics/burst/18.jpeg',
                 'pics/burst/19.jpeg',
                 'pics/burst/20.jpeg',
@@ -574,47 +577,76 @@
 
         let burstTimer = null;
 
+        // Fisher-Yates shuffle, used to reveal photos in random order (added)
+        function shuffleArray(arr) {
+            const copy = arr.slice();
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
         function openPhotoBurst(key) {
             const photos = burstShows[key] || [];
             if (photos.length === 0) return;
 
             const wrap = document.getElementById('burst-slide-wrap');
             wrap.innerHTML = '';
+
+            // Lay photos out on a jittered grid so they cover the whole
+            // screen with far fewer gaps, instead of pure random placement (added)
+            const cols = 5;
+            const rows = Math.ceil(photos.length / cols);
+            const cellW = 100 / cols;
+            const cellH = 100 / rows;
+
             photos.forEach((src, i) => {
                 const img = document.createElement('img');
                 img.src = src;
                 img.alt = 'Memory ' + (i + 1);
 
-                // Scatter each photo to a random spot/size/rotation (added)
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const jitterX = (Math.random() * 0.5 - 0.25) * cellW;
+                const jitterY = (Math.random() * 0.5 - 0.25) * cellH;
+                const left = Math.min(92, Math.max(0, col * cellW + jitterX));
+                const top = Math.min(92, Math.max(0, row * cellH + jitterY));
+
                 const rot = (Math.random() * 34 - 17).toFixed(1);
-                const size = (Math.random() * 14 + 18).toFixed(1); // 18vw - 32vw
-                const top = (Math.random() * 68 + 4).toFixed(1);
-                const left = (Math.random() * 68 + 4).toFixed(1);
+                const size = (Math.random() * 10 + 20).toFixed(1); // 20vw - 30vw, sized to overlap neighboring cells
+
                 img.style.setProperty('--rot', rot + 'deg');
                 img.style.width = size + 'vw';
-                img.style.top = top + '%';
-                img.style.left = left + '%';
+                img.style.top = top.toFixed(1) + '%';
+                img.style.left = left.toFixed(1) + '%';
                 img.style.zIndex = i + 1;
 
                 wrap.appendChild(img);
             });
 
             const imgs = wrap.querySelectorAll('img');
-            imgs[0].classList.add('active');
+
+            // Reveal photos in random order rather than array order (added)
+            const revealOrder = shuffleArray(Array.from({ length: imgs.length }, (_, i) => i));
+            imgs[revealOrder[0]].classList.add('active');
 
             const overlay = document.getElementById('burst-lightbox');
             overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
 
-            // Roughly 10 seconds total, split evenly across every photo (added)
-            const totalDurationMs = 10000;
+            // Start the birthday song when the burst begins (added)
+            playBirthdaySong();
+
+            // Roughly 15 seconds total, split evenly across every photo (added)
+            const totalDurationMs = 15000;
             const stepMs = totalDurationMs / photos.length;
 
-            let index = 0;
+            let step = 0;
             if (burstTimer) clearInterval(burstTimer);
             burstTimer = setInterval(() => {
-                index++;
-                if (index >= imgs.length) {
+                step++;
+                if (step >= revealOrder.length) {
                     clearInterval(burstTimer);
                     burstTimer = null;
                     // Hold the full flood on screen for a beat before closing (added)
@@ -622,8 +654,40 @@
                     return;
                 }
                 // Photos pile up rather than replacing one another (added)
-                imgs[index].classList.add('active');
+                imgs[revealOrder[step]].classList.add('active');
             }, stepMs);
+        }
+
+        /* --- Birthday Song Controls (added) --- */
+        let wasBgMusicPlaying = false;
+
+        function playBirthdaySong() {
+            const song = document.getElementById('birthday-song');
+            if (!song) return;
+
+            // Duck the ambient background music while the song plays
+            wasBgMusicPlaying = isMusicPlaying;
+            if (isMusicPlaying) {
+                document.getElementById('bg-music').pause();
+            }
+
+            song.currentTime = 0;
+            song.play().catch(() => {
+                // Autoplay blocked - she can still hear it if audio was already unlocked by other interaction
+            });
+        }
+
+        function stopBirthdaySong() {
+            const song = document.getElementById('birthday-song');
+            if (song) {
+                song.pause();
+                song.currentTime = 0;
+            }
+            // Resume the ambient music if it was playing before the burst
+            if (wasBgMusicPlaying) {
+                document.getElementById('bg-music').play().catch(() => {});
+                wasBgMusicPlaying = false;
+            }
         }
 
         function closePhotoBurst() {
@@ -634,6 +698,7 @@
                 clearInterval(burstTimer);
                 burstTimer = null;
             }
+            stopBirthdaySong();
         }
 
         // Click the dark backdrop or press Escape to close the burst early (added)
