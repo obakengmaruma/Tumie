@@ -446,9 +446,9 @@
     <!-- Ambient Canvas for Background Effects (added) -->
     <canvas id="ambient-canvas"></canvas>
 
-    <!-- Background Audio Element & Button (added) -->
-    <audio id="birthday-song" src="track/Superpowers.mp3"></audio>
-    <!-- Happy Birthday song, played when the photo burst starts (added) -->
+    <!-- Main Background Track: Superpowers -->
+    <audio id="bg-music" loop src="track/Superpowers.mp3"></audio>
+    <!-- Change the src path below to set your custom birthday song -->
     <audio id="birthday-song" src="track/Happy Birthday.mp3"></audio>
     <button class="music-btn" id="music-toggle" onclick="toggleMusic()" title="Toggle Background Music">🎵</button>
 
@@ -620,7 +620,6 @@
                 img.style.width = size + 'vw';
                 img.style.top = top.toFixed(1) + '%';
                 img.style.left = left.toFixed(1) + '%';
-                img.style.zIndex = i + 1;
 
                 wrap.appendChild(img);
             });
@@ -629,6 +628,9 @@
 
             // Reveal photos in random order rather than array order (added)
             const revealOrder = shuffleArray(Array.from({ length: imgs.length }, (_, i) => i));
+            
+            // First photo appears on bottom layer (z-index 1)
+            imgs[revealOrder[0]].style.zIndex = 1;
             imgs[revealOrder[0]].classList.add('active');
 
             const overlay = document.getElementById('burst-lightbox');
@@ -653,8 +655,10 @@
                     setTimeout(closePhotoBurst, 900);
                     return;
                 }
-                // Photos pile up rather than replacing one another (added)
-                imgs[revealOrder[step]].classList.add('active');
+                // Newer photos get a higher z-index so they burst ON TOP of older ones
+                const currentImg = imgs[revealOrder[step]];
+                currentImg.style.zIndex = step + 1;
+                currentImg.classList.add('active');
             }, stepMs);
         }
 
@@ -672,6 +676,7 @@
             }
 
             song.currentTime = 0;
+            song.volume = 1;
             song.play().catch(() => {
                 // Autoplay blocked - she can still hear it if audio was already unlocked by other interaction
             });
@@ -683,9 +688,9 @@
                 song.pause();
                 song.currentTime = 0;
             }
-            // Resume the ambient music if it was playing before the burst
+            // Resume and fade in the ambient music if it was playing before the burst
             if (wasBgMusicPlaying) {
-                document.getElementById('bg-music').play().catch(() => {});
+                playMusic();
                 wasBgMusicPlaying = false;
             }
         }
@@ -912,7 +917,7 @@
             // Initialize the Scroll Observer for lazy animations
             initScrollObserver();
 
-            // Auto-play music when experience opens (added)
+            // Auto-play music with smooth fade-in when experience opens (added)
             playMusic();
         }
 
@@ -937,14 +942,32 @@
             document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
         }
 
-        /* --- Audio Controls Logic (added) --- */
+        /* --- Audio Controls Logic with Smooth Fade-In (updated) --- */
         let isMusicPlaying = false;
+        let fadeInterval = null;
+
         function playMusic() {
             const audio = document.getElementById('bg-music');
             if (audio) {
+                audio.volume = 0;
                 audio.play().then(() => {
                     isMusicPlaying = true;
                     document.getElementById('music-toggle').textContent = '🎶';
+
+                    // Smoothly fade audio volume up to 1 over 2 seconds
+                    if (fadeInterval) clearInterval(fadeInterval);
+                    let vol = 0;
+                    fadeInterval = setInterval(() => {
+                        vol += 0.05;
+                        if (vol >= 1) {
+                            audio.volume = 1;
+                            clearInterval(fadeInterval);
+                            fadeInterval = null;
+                        } else {
+                            audio.volume = vol;
+                        }
+                    }, 100);
+
                 }).catch(() => {
                     // Autoplay prevented by browser, user can toggle manually
                 });
@@ -955,11 +978,14 @@
             const audio = document.getElementById('bg-music');
             const btn = document.getElementById('music-toggle');
             if (!audio) return;
+            if (fadeInterval) clearInterval(fadeInterval);
+
             if (isMusicPlaying) {
                 audio.pause();
                 btn.textContent = '🎵';
                 isMusicPlaying = false;
             } else {
+                audio.volume = 1;
                 audio.play();
                 btn.textContent = '🎶';
                 isMusicPlaying = true;
