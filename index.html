@@ -331,6 +331,31 @@
             }
         }
 
+        /* --- Photo Burst Popup (added) --- */
+        .burst-slide-wrap {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .burst-slide-wrap img {
+            position: absolute;
+            aspect-ratio: 4 / 5;
+            height: auto;
+            object-fit: cover;
+            border: 4px solid #fff;
+            border-radius: 6px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+            opacity: 0;
+            transform: scale(0.4) rotate(var(--rot, 0deg));
+            transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.25, 1.4, 0.4, 1);
+        }
+
+        .burst-slide-wrap img.active {
+            opacity: 1;
+            transform: scale(1) rotate(var(--rot, 0deg));
+        }
+
         /* --- Message Section --- */
         #message-section {
             margin-top: 120px;
@@ -464,7 +489,7 @@
             </div>
 
             <!-- Card 3: Image -->
-            <div class="media-card reveal">
+            <div class="media-card reveal has-slideshow" onclick="openPhotoBurst('birthdayBurst')">
                 <div class="media-wrapper contain-fit">
                     <img src="pics/pic.jpg" alt="Photo of her">
                 </div>
@@ -493,6 +518,11 @@
         <div class="lightbox-counter" id="lightbox-counter"></div>
     </div>
 
+    <!-- Photo Burst Popup (added) - rapid-fire photos filling the screen -->
+    <div class="lightbox-overlay" id="burst-lightbox">
+        <div class="burst-slide-wrap" id="burst-slide-wrap"></div>
+    </div>
+
     <script>
         // Slideshow image sets for lightbox-enabled cards (added)
         // Add / rename paths here - each key matches an onclick="openLightbox('key')" on a card
@@ -508,6 +538,112 @@
                 
             ]
         };
+
+        // Photo sets for the rapid-fire "photo burst" popup (added)
+        // Add / rename paths here - each key matches an onclick="openPhotoBurst('key')" on a card
+        const burstShows = {
+            birthdayBurst: [
+                'pics/burst/1.jpg', 
+                'pics/burst/2.jpg', 
+                'pics/burst/3.jpg',
+                'pics/burst/4.jpg', 
+                'pics/burst/5.jpg', 
+                'pics/burst/6.jpg',
+                'pics/burst/7.jpg',
+                'pics/burst/8.jpg',
+                'pics/burst/9.jpg',
+                'pics/burst/10.jpg',
+                'pics/burst/11.jpg',
+                'pics/burst/12.jpg',
+                'pics/burst/13.jpg',
+                'pics/burst/14.jpg',
+                'pics/burst/15.jpg',
+                'pics/burst/16.jpg',
+                'pics/burst/17.jpg', 
+                'pics/burst/18.jpg',
+                'pics/burst/19.jpg',
+                'pics/burst/20.jpg',
+                'pics/burst/21.jpg',
+                'pics/burst/22.jpg',
+                'pics/burst/23.jpg'
+            ]
+        };
+
+        let burstTimer = null;
+
+        function openPhotoBurst(key) {
+            const photos = burstShows[key] || [];
+            if (photos.length === 0) return;
+
+            const wrap = document.getElementById('burst-slide-wrap');
+            wrap.innerHTML = '';
+            photos.forEach((src, i) => {
+                const img = document.createElement('img');
+                img.src = src;
+                img.alt = 'Memory ' + (i + 1);
+
+                // Scatter each photo to a random spot/size/rotation (added)
+                const rot = (Math.random() * 34 - 17).toFixed(1);
+                const size = (Math.random() * 14 + 18).toFixed(1); // 18vw - 32vw
+                const top = (Math.random() * 68 + 4).toFixed(1);
+                const left = (Math.random() * 68 + 4).toFixed(1);
+                img.style.setProperty('--rot', rot + 'deg');
+                img.style.width = size + 'vw';
+                img.style.top = top + '%';
+                img.style.left = left + '%';
+                img.style.zIndex = i + 1;
+
+                wrap.appendChild(img);
+            });
+
+            const imgs = wrap.querySelectorAll('img');
+            imgs[0].classList.add('active');
+
+            const overlay = document.getElementById('burst-lightbox');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            // Roughly 10 seconds total, split evenly across every photo (added)
+            const totalDurationMs = 10000;
+            const stepMs = totalDurationMs / photos.length;
+
+            let index = 0;
+            if (burstTimer) clearInterval(burstTimer);
+            burstTimer = setInterval(() => {
+                index++;
+                if (index >= imgs.length) {
+                    clearInterval(burstTimer);
+                    burstTimer = null;
+                    // Hold the full flood on screen for a beat before closing (added)
+                    setTimeout(closePhotoBurst, 900);
+                    return;
+                }
+                // Photos pile up rather than replacing one another (added)
+                imgs[index].classList.add('active');
+            }, stepMs);
+        }
+
+        function closePhotoBurst() {
+            const overlay = document.getElementById('burst-lightbox');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+            if (burstTimer) {
+                clearInterval(burstTimer);
+                burstTimer = null;
+            }
+        }
+
+        // Click the dark backdrop or press Escape to close the burst early (added)
+        document.getElementById('burst-lightbox').addEventListener('click', (e) => {
+            if (e.target.id === 'burst-lightbox') closePhotoBurst();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            const burstOverlay = document.getElementById('burst-lightbox');
+            if (burstOverlay.classList.contains('active') && e.key === 'Escape') {
+                closePhotoBurst();
+            }
+        });
 
         let currentSlideshow = [];
         let currentSlideIndex = 0;
