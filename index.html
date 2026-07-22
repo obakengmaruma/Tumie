@@ -357,6 +357,37 @@
             transform: scale(1) rotate(var(--rot, 0deg));
         }
 
+        /* --- Finale Jersey Graphic (added) --- */
+        .finale-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(5, 5, 6, 0.93);
+            z-index: 1500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.6s ease;
+        }
+
+        .finale-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .finale-svg {
+            width: min(94vw, 640px);
+            transform: scale(0.7);
+            opacity: 0;
+            transition: transform 0.7s cubic-bezier(0.2, 1.6, 0.4, 1), opacity 0.5s ease;
+        }
+
+        .finale-overlay.active .finale-svg {
+            transform: scale(1);
+            opacity: 1;
+        }
+
         /* --- Message Section --- */
         #message-section {
             margin-top: 120px;
@@ -526,6 +557,40 @@
         <div class="burst-slide-wrap" id="burst-slide-wrap"></div>
     </div>
 
+    <!-- Finale Jersey Graphic (added) - shown right after the photo burst finishes -->
+    <div class="finale-overlay" id="finale-overlay">
+        <svg class="finale-svg" viewBox="0 0 400 340" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <path id="finale-arc" d="M 30,110 Q 200,10 370,110" fill="transparent" />
+
+                <!-- Photo mosaic used to fill the lettering instead of solid red (added) -->
+                <pattern id="finale-collage" patternUnits="objectBoundingBox" patternContentUnits="objectBoundingBox" width="1" height="1">
+                    <image href="pics/burst/1.jpeg" x="0" y="0" width="0.3334" height="0.5" preserveAspectRatio="xMidYMid slice" />
+                    <image href="pics/burst/2.jpeg" x="0.3334" y="0" width="0.3333" height="0.5" preserveAspectRatio="xMidYMid slice" />
+                    <image href="pics/burst/3.jpeg" x="0.6667" y="0" width="0.3333" height="0.5" preserveAspectRatio="xMidYMid slice" />
+                    <image href="pics/burst/4.jpeg" x="0" y="0.5" width="0.3334" height="0.5" preserveAspectRatio="xMidYMid slice" />
+                    <image href="pics/burst/5.jpeg" x="0.3334" y="0.5" width="0.3333" height="0.5" preserveAspectRatio="xMidYMid slice" />
+                    <image href="pics/burst/6.jpeg" x="0.6667" y="0.5" width="0.3333" height="0.5" preserveAspectRatio="xMidYMid slice" />
+                </pattern>
+            </defs>
+            <!-- Arched name, black outline layer then photo-collage fill layer -->
+            <text font-family="Arial Black, Arial, sans-serif" font-size="46" font-weight="900"
+                  fill="#000" stroke="#000" stroke-width="10">
+                <textPath href="#finale-arc" startOffset="50%" text-anchor="middle">TUMIE&#10084;&#65039;</textPath>
+            </text>
+            <text font-family="Arial Black, Arial, sans-serif" font-size="46" font-weight="900"
+                  fill="url(#finale-collage)" stroke="#fff" stroke-width="4">
+                <textPath href="#finale-arc" startOffset="50%" text-anchor="middle">TUMIE&#10084;&#65039;</textPath>
+            </text>
+
+            <!-- Big number, same black-outline-then-collage-fill layering -->
+            <text x="200" y="300" text-anchor="middle" font-family="Arial Black, Arial, sans-serif"
+                  font-size="180" font-weight="900" fill="#000" stroke="#000" stroke-width="12">23</text>
+            <text x="200" y="300" text-anchor="middle" font-family="Arial Black, Arial, sans-serif"
+                  font-size="180" font-weight="900" fill="url(#finale-collage)" stroke="#fff" stroke-width="5">23</text>
+        </svg>
+    </div>
+
     <script>
         // Slideshow image sets for lightbox-enabled cards (added)
         // Add / rename paths here - each key matches an onclick="openLightbox('key')" on a card
@@ -576,6 +641,7 @@
         };
 
         let burstTimer = null;
+        let finaleTimer = null;
 
         // Fisher-Yates shuffle, used to reveal photos in random order (added)
         function shuffleArray(arr) {
@@ -651,8 +717,13 @@
                 if (step >= revealOrder.length) {
                     clearInterval(burstTimer);
                     burstTimer = null;
-                    // Hold the full flood on screen for a beat before closing (added)
-                    setTimeout(closePhotoBurst, 900);
+                    // Hold the full flood on screen for a beat, then show the finale graphic (added)
+                    setTimeout(() => {
+                        showFinale();
+                        finaleTimer = setTimeout(() => {
+                            closePhotoBurst();
+                        }, 4500);
+                    }, 900);
                     return;
                 }
                 // Newer photos get a higher z-index so they burst ON TOP of older ones
@@ -661,6 +732,24 @@
                 currentImg.classList.add('active');
             }, stepMs);
         }
+
+        /* --- Finale Graphic Controls (added) --- */
+        function showFinale() {
+            document.getElementById('finale-overlay').classList.add('active');
+        }
+
+        function hideFinale() {
+            document.getElementById('finale-overlay').classList.remove('active');
+            if (finaleTimer) {
+                clearTimeout(finaleTimer);
+                finaleTimer = null;
+            }
+        }
+
+        // Clicking the finale skips straight to closing (added)
+        document.getElementById('finale-overlay').addEventListener('click', () => {
+            closePhotoBurst();
+        });
 
         /* --- Birthday Song Controls (added) --- */
         let wasBgMusicPlaying = false;
@@ -703,6 +792,7 @@
                 clearInterval(burstTimer);
                 burstTimer = null;
             }
+            hideFinale();
             stopBirthdaySong();
         }
 
@@ -713,7 +803,8 @@
 
         document.addEventListener('keydown', (e) => {
             const burstOverlay = document.getElementById('burst-lightbox');
-            if (burstOverlay.classList.contains('active') && e.key === 'Escape') {
+            const finaleOverlay = document.getElementById('finale-overlay');
+            if ((burstOverlay.classList.contains('active') || finaleOverlay.classList.contains('active')) && e.key === 'Escape') {
                 closePhotoBurst();
             }
         });
