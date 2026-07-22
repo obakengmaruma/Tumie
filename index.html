@@ -376,7 +376,20 @@
             pointer-events: auto;
         }
 
+        /* Fireworks fill the whole overlay behind the graphic (added) */
+        .firework-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
         .finale-svg {
+            position: relative;
+            z-index: 1;
             width: 94vw;
             max-width: 900px;
             height: auto;
@@ -459,6 +472,33 @@
             z-index: 0;
         }
 
+        /* --- Background Figure (added) --- */
+        .bg-figure {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(70vw, 520px);
+            max-height: 88vh;
+            object-fit: contain;
+            z-index: 0;
+            opacity: 0.85;
+            pointer-events: none;
+            filter: drop-shadow(0 20px 35px rgba(0, 0, 0, 0.55));
+            /* Jagged edges to read like a photo torn from a page (added) */
+            clip-path: polygon(
+                2% 0%, 9% 3%, 16% 0%, 23% 4%, 31% 1%, 39% 4%, 47% 0%, 55% 4%, 63% 1%, 71% 4%, 79% 0%, 87% 3%, 95% 0%, 100% 4%,
+                97% 11%, 100% 19%, 96% 27%, 100% 35%, 97% 43%, 100% 51%, 96% 59%, 100% 67%, 97% 75%, 100% 83%, 96% 91%, 100% 97%,
+                92% 100%, 84% 96%, 76% 100%, 68% 97%, 60% 100%, 52% 96%, 44% 100%, 36% 97%, 28% 100%, 20% 96%, 12% 100%, 4% 97%, 0% 100%,
+                3% 92%, 0% 84%, 4% 76%, 0% 68%, 3% 60%, 0% 52%, 4% 44%, 0% 36%, 3% 28%, 0% 20%, 4% 12%, 0% 4%
+            );
+            transition: opacity 0.9s ease;
+        }
+
+        .bg-figure.faded {
+            opacity: 0;
+        }
+
         /* --- Interactive Click Heart Particle (added) --- */
         .click-heart {
             position: fixed;
@@ -479,6 +519,10 @@
 
     <!-- Ambient Canvas for Background Effects (added) -->
     <canvas id="ambient-canvas"></canvas>
+
+    <!-- Background Figure (added) - big centered photo sitting behind everything,
+         visible from the hero all the way down until the message section -->
+    <img id="bg-figure" class="bg-figure" src="pics/Picturebg.png" alt="">
 
     <!-- Main Background Track: Superpowers -->
     <audio id="bg-music" loop src="track/Superpowers.mp3"></audio>
@@ -562,6 +606,8 @@
 
     <!-- Finale Jersey Graphic (added) - shown right after the photo burst finishes -->
     <div class="finale-overlay" id="finale-overlay">
+        <!-- Fireworks canvas, fills the screen behind the finale graphic (added) -->
+        <canvas id="firework-canvas" class="firework-canvas"></canvas>
         <svg class="finale-svg" viewBox="0 0 400 340" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <path id="finale-arc" d="M 30,110 Q 200,10 370,110" fill="transparent" />
@@ -739,6 +785,7 @@
         /* --- Finale Graphic Controls (added) --- */
         function showFinale() {
             document.getElementById('finale-overlay').classList.add('active');
+            startFireworks(4000);
         }
 
         function hideFinale() {
@@ -746,6 +793,98 @@
             if (finaleTimer) {
                 clearTimeout(finaleTimer);
                 finaleTimer = null;
+            }
+            stopFireworks();
+        }
+
+        /* --- Fireworks Effect (added) - fills the screen while the finale is shown --- */
+        let fireworkAnimId = null;
+        let fireworkSpawnTimer = null;
+        let fireworkStopTimer = null;
+        let fireworkParticles = [];
+
+        function startFireworks(durationMs) {
+            const canvas = document.getElementById('firework-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            fireworkParticles = [];
+
+            function spawnBurst() {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height * 0.55 + canvas.height * 0.08;
+                const hue = Math.floor(Math.random() * 40) + 200; // blue range
+                const count = 46;
+                for (let i = 0; i < count; i++) {
+                    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.15;
+                    const speed = Math.random() * 3 + 2;
+                    fireworkParticles.push({
+                        x, y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        alpha: 1,
+                        color: `hsl(${hue + Math.random() * 30 - 15}, 90%, 62%)`
+                    });
+                }
+            }
+
+            // Fill the screen with bursts, roughly every third of a second
+            spawnBurst();
+            if (fireworkSpawnTimer) clearInterval(fireworkSpawnTimer);
+            fireworkSpawnTimer = setInterval(spawnBurst, 350);
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                fireworkParticles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.035; // gravity
+                    p.alpha -= 0.012;
+                });
+                fireworkParticles = fireworkParticles.filter(p => p.alpha > 0);
+                fireworkParticles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.globalAlpha = Math.max(p.alpha, 0);
+                    ctx.fillStyle = p.color;
+                    ctx.arc(p.x, p.y, 2.6, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.globalAlpha = 1;
+                fireworkAnimId = requestAnimationFrame(animate);
+            }
+            animate();
+
+            // Stop spawning new bursts after the requested duration; existing
+            // particles simply fade out naturally over the following moment
+            if (fireworkStopTimer) clearTimeout(fireworkStopTimer);
+            fireworkStopTimer = setTimeout(() => {
+                if (fireworkSpawnTimer) {
+                    clearInterval(fireworkSpawnTimer);
+                    fireworkSpawnTimer = null;
+                }
+            }, durationMs);
+        }
+
+        function stopFireworks() {
+            if (fireworkSpawnTimer) {
+                clearInterval(fireworkSpawnTimer);
+                fireworkSpawnTimer = null;
+            }
+            if (fireworkStopTimer) {
+                clearTimeout(fireworkStopTimer);
+                fireworkStopTimer = null;
+            }
+            if (fireworkAnimId) {
+                cancelAnimationFrame(fireworkAnimId);
+                fireworkAnimId = null;
+            }
+            fireworkParticles = [];
+            const canvas = document.getElementById('firework-canvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
         }
 
@@ -1122,6 +1261,24 @@
             document.body.appendChild(heart);
 
             setTimeout(() => heart.remove(), 1200);
+        });
+
+        /* --- Background Figure Fade (added) - hides the figure once the message section is reached --- */
+        const bgFigureObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const bgFigure = document.getElementById('bg-figure');
+                if (!bgFigure) return;
+                if (entry.isIntersecting) {
+                    bgFigure.classList.add('faded');
+                } else {
+                    bgFigure.classList.remove('faded');
+                }
+            });
+        }, { threshold: 0.15 });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const messageSection = document.getElementById('message-section');
+            if (messageSection) bgFigureObserver.observe(messageSection);
         });
 
         /* --- Ambient Floating Heart Background Canvas (added) --- */
