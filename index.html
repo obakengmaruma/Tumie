@@ -149,6 +149,8 @@
             max-width: 1100px;
             margin: 0 auto;
             padding: 0 20px 100px 20px;
+            position: relative;
+            z-index: 1;
         }
 
         /* --- Gallery Section --- */
@@ -410,6 +412,8 @@
             text-align: center;
             padding: 60px 20px;
             border-top: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            z-index: 2;
         }
 
         .message-box {
@@ -472,27 +476,21 @@
             z-index: 0;
         }
 
-        /* --- Background Figure (added) --- */
+        /* --- Background Figure (Updated - Centered & Proportionate) --- */
         .bg-figure {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: min(88vw, 780px);
-            max-height: 92vh;
+            width: min(90vw, 850px);
+            height: auto;
+            max-height: 85vh;
             object-fit: contain;
             z-index: 0;
-            opacity: 0.85;
+            opacity: 1;
             pointer-events: none;
             filter: drop-shadow(0 20px 35px rgba(0, 0, 0, 0.55));
-            /* Jagged edges to read like a photo torn from a page (added) */
-            clip-path: polygon(
-                2% 0%, 9% 3%, 16% 0%, 23% 4%, 31% 1%, 39% 4%, 47% 0%, 55% 4%, 63% 1%, 71% 4%, 79% 0%, 87% 3%, 95% 0%, 100% 4%,
-                97% 11%, 100% 19%, 96% 27%, 100% 35%, 97% 43%, 100% 51%, 96% 59%, 100% 67%, 97% 75%, 100% 83%, 96% 91%, 100% 97%,
-                92% 100%, 84% 96%, 76% 100%, 68% 97%, 60% 100%, 52% 96%, 44% 100%, 36% 97%, 28% 100%, 20% 96%, 12% 100%, 4% 97%, 0% 100%,
-                3% 92%, 0% 84%, 4% 76%, 0% 68%, 3% 60%, 0% 52%, 4% 44%, 0% 36%, 3% 28%, 0% 20%, 4% 12%, 0% 4%
-            );
-            transition: opacity 0.9s ease;
+            transition: opacity 0.6s ease;
         }
 
         .bg-figure.faded {
@@ -520,8 +518,7 @@
     <!-- Ambient Canvas for Background Effects (added) -->
     <canvas id="ambient-canvas"></canvas>
 
-    <!-- Background Figure (added) - big centered photo sitting behind everything,
-         visible from the hero all the way down until the message section -->
+    <!-- Background Figure - centered and spread out in proportion -->
     <img id="bg-figure" class="bg-figure" src="pics/bg-figure.png" alt="">
 
     <!-- Main Background Track: Superpowers -->
@@ -1263,7 +1260,7 @@
             setTimeout(() => heart.remove(), 1200);
         });
 
-        /* --- Background Figure Fade (added) - hides the figure once the message section is reached --- */
+        /* --- Background Figure Fade - only fades when scrolling INTO the message section --- */
         const bgFigureObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 const bgFigure = document.getElementById('bg-figure');
@@ -1274,7 +1271,7 @@
                     bgFigure.classList.remove('faded');
                 }
             });
-        }, { threshold: 0.15 });
+        }, { rootMargin: "0px 0px -25% 0px", threshold: 0.1 });
 
         document.addEventListener('DOMContentLoaded', () => {
             const messageSection = document.getElementById('message-section');
