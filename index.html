@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tumie</title>
+    <!-- Handwritten-style font for the book's messages (added) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #89cff0; /* Task 1: Baby Blue Background */
@@ -365,6 +368,51 @@
             transform: scale(1) rotate(var(--rot, 0deg));
         }
 
+        /* --- Flip-Book Popup (added) --- */
+        .book {
+            position: relative;
+            width: min(92vw, 540px);
+        }
+
+        .book-page {
+            background: #faf3e6;
+            border-radius: 6px 12px 12px 6px;
+            box-shadow: -6px 0 0 rgba(0, 0, 0, 0.08) inset, 0 25px 55px rgba(0, 0, 0, 0.55);
+            padding: 28px 26px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 82vh;
+            overflow-y: auto;
+            transform-origin: left center;
+        }
+
+        .book-page.turning {
+            animation: bookPageTurn 0.55s ease;
+        }
+
+        @keyframes bookPageTurn {
+            0% { transform: scaleX(1); opacity: 1; }
+            50% { transform: scaleX(0.05); opacity: 0.3; }
+            100% { transform: scaleX(1); opacity: 1; }
+        }
+
+        .book-media {
+            width: 100%;
+            display: block;
+            border-radius: 6px;
+            max-height: 46vh;
+            object-fit: cover;
+        }
+
+        .book-message {
+            font-family: 'Caveat', cursive;
+            font-size: 1.6rem;
+            line-height: 1.45;
+            color: #2a2a2a;
+            white-space: pre-line;
+        }
+
         /* --- Finale Jersey Graphic --- */
         .finale-overlay {
             position: fixed;
@@ -553,7 +601,7 @@
             </div>
 
             <!-- Card 2: Video -->
-            <div class="media-card reveal">
+            <div class="media-card reveal has-slideshow" onclick="openBook('crazyBook')">
                 <div class="media-wrapper">
                     <video src="vids/vid4.mp4" muted loop playsinline onmouseover="this.play()" onmouseout="this.pause()"></video>
                 </div>
@@ -598,6 +646,16 @@
     <!-- Photo Burst Popup -->
     <div class="lightbox-overlay" id="burst-lightbox">
         <div class="burst-slide-wrap" id="burst-slide-wrap"></div>
+    </div>
+
+    <!-- Flip-Book Popup (added) - press Card 2 to open a book; each page holds a photo/video and a message -->
+    <div class="lightbox-overlay" id="book-overlay">
+        <button class="lightbox-arrow lightbox-prev" onclick="turnPage(-1)">&#10094;</button>
+        <div class="book" id="book">
+            <div class="book-page" id="book-page"></div>
+        </div>
+        <button class="lightbox-arrow lightbox-next" onclick="turnPage(1)">&#10095;</button>
+        <div class="lightbox-counter" id="book-page-counter"></div>
     </div>
 
     <!-- Finale Jersey Graphic -->
@@ -681,6 +739,101 @@
                 'pics/burst/26.jpg'
             ]
         };
+
+        // Pages for the flip-book popup (added) - each page is a photo or video plus a message
+        // Add / rename entries here - each key matches an onclick="openBook('key')" on a card
+        const bookShows = {
+            crazyBook: [
+                { type: 'video', src: 'pics/book/page1.mp4', message: 'Page 1 - write your message here...' },
+                { type: 'image', src: 'pics/book/page2.jpg', message: 'Page 2 - write your message here...' },
+                { type: 'image', src: 'pics/book/page3.jpg', message: 'Page 3 - write your message here...' },
+                { type: 'video', src: 'pics/book/page4.mp4', message: 'Page 4 - write your message here...' },
+                { type: 'image', src: 'pics/book/page5.jpg', message: 'Page 5 - write your message here...' }
+            ]
+        };
+
+        let bookPages = [];
+        let currentBookPage = 0;
+
+        function renderBookPage(index) {
+            const page = bookPages[index];
+            if (!page) return;
+            const pageEl = document.getElementById('book-page');
+            pageEl.innerHTML = '';
+
+            const media = document.createElement(page.type === 'video' ? 'video' : 'img');
+            media.className = 'book-media';
+            media.src = page.src;
+            if (page.type === 'video') {
+                media.controls = true;
+                media.playsInline = true;
+            } else {
+                media.alt = 'Memory ' + (index + 1);
+            }
+
+            const message = document.createElement('p');
+            message.className = 'book-message';
+            message.textContent = page.message;
+
+            pageEl.appendChild(media);
+            pageEl.appendChild(message);
+
+            const counter = document.getElementById('book-page-counter');
+            if (counter) counter.textContent = (index + 1) + ' / ' + bookPages.length;
+        }
+
+        function turnPage(direction) {
+            if (bookPages.length === 0) return;
+            const total = bookPages.length;
+            const nextIndex = (currentBookPage + direction + total) % total;
+            const pageEl = document.getElementById('book-page');
+
+            // Pause any video on the current page before it turns away (added)
+            const currentMedia = pageEl.querySelector('video');
+            if (currentMedia) currentMedia.pause();
+
+            pageEl.classList.add('turning');
+            setTimeout(() => {
+                currentBookPage = nextIndex;
+                renderBookPage(currentBookPage);
+            }, 275);
+            setTimeout(() => {
+                pageEl.classList.remove('turning');
+            }, 560);
+        }
+
+        function openBook(key) {
+            bookPages = bookShows[key] || [];
+            if (bookPages.length === 0) return;
+
+            currentBookPage = 0;
+            renderBookPage(0);
+
+            document.getElementById('book-overlay').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeBook() {
+            const overlay = document.getElementById('book-overlay');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+            const media = document.querySelector('#book-page video');
+            if (media) media.pause();
+        }
+
+        // Click the dark backdrop or press Escape to close the book (added)
+        document.getElementById('book-overlay').addEventListener('click', (e) => {
+            if (e.target.id === 'book-overlay') closeBook();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            const bookOverlay = document.getElementById('book-overlay');
+            if (bookOverlay.classList.contains('active') && e.key === 'Escape') {
+                closeBook();
+            }
+            if (bookOverlay.classList.contains('active') && e.key === 'ArrowRight') turnPage(1);
+            if (bookOverlay.classList.contains('active') && e.key === 'ArrowLeft') turnPage(-1);
+        });
 
         let burstTimer = null;
         let finaleTimer = null;
