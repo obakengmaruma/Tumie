@@ -372,6 +372,7 @@
         .book {
             position: relative;
             width: min(92vw, 540px);
+            perspective: 1800px;
         }
 
         .book-page {
@@ -385,16 +386,18 @@
             max-height: 82vh;
             overflow-y: auto;
             transform-origin: left center;
+            transform-style: preserve-3d;
+            backface-visibility: hidden;
         }
 
         .book-page.turning {
-            animation: bookPageTurn 0.55s ease;
+            animation: bookPageTurn 0.6s ease;
         }
 
         @keyframes bookPageTurn {
-            0% { transform: scaleX(1); opacity: 1; }
-            50% { transform: scaleX(0.05); opacity: 0.3; }
-            100% { transform: scaleX(1); opacity: 1; }
+            0% { transform: rotateY(0deg); opacity: 1; }
+            50% { transform: rotateY(-100deg); opacity: 0.35; }
+            100% { transform: rotateY(0deg); opacity: 1; }
         }
 
         .book-media {
@@ -754,6 +757,8 @@
 
         let bookPages = [];
         let currentBookPage = 0;
+        let bookAutoTimer = null;
+        let bookVideoEndHandler = null;
 
         function renderBookPage(index) {
             const page = bookPages[index];
@@ -778,8 +783,48 @@
             pageEl.appendChild(media);
             pageEl.appendChild(message);
 
+            // Autoplay the video the moment its page is shown (added)
+            if (page.type === 'video') {
+                media.play().catch(() => {
+                    // Autoplay blocked - the visible controls let her press play manually
+                });
+            }
+
             const counter = document.getElementById('book-page-counter');
             if (counter) counter.textContent = (index + 1) + ' / ' + bookPages.length;
+
+            // Schedule the automatic flip to the next page (added)
+            scheduleBookAutoAdvance();
+        }
+
+        // Images auto-flip after 3s; videos wait until they finish playing (added)
+        function scheduleBookAutoAdvance() {
+            clearBookAutoAdvance();
+
+            const isLastPage = currentBookPage === bookPages.length - 1;
+            if (isLastPage) return; // stop auto-flipping once the book reaches its last page
+
+            const page = bookPages[currentBookPage];
+            const media = document.querySelector('#book-page video');
+
+            if (page.type === 'video' && media) {
+                bookVideoEndHandler = () => turnPage(1);
+                media.addEventListener('ended', bookVideoEndHandler);
+            } else {
+                bookAutoTimer = setTimeout(() => turnPage(1), 3000);
+            }
+        }
+
+        function clearBookAutoAdvance() {
+            if (bookAutoTimer) {
+                clearTimeout(bookAutoTimer);
+                bookAutoTimer = null;
+            }
+            if (bookVideoEndHandler) {
+                const media = document.querySelector('#book-page video');
+                if (media) media.removeEventListener('ended', bookVideoEndHandler);
+                bookVideoEndHandler = null;
+            }
         }
 
         function turnPage(direction) {
@@ -787,6 +832,8 @@
             const total = bookPages.length;
             const nextIndex = (currentBookPage + direction + total) % total;
             const pageEl = document.getElementById('book-page');
+
+            clearBookAutoAdvance();
 
             // Pause any video on the current page before it turns away (added)
             const currentMedia = pageEl.querySelector('video');
@@ -796,10 +843,10 @@
             setTimeout(() => {
                 currentBookPage = nextIndex;
                 renderBookPage(currentBookPage);
-            }, 275);
+            }, 300);
             setTimeout(() => {
                 pageEl.classList.remove('turning');
-            }, 560);
+            }, 600);
         }
 
         function openBook(key) {
@@ -817,6 +864,7 @@
             const overlay = document.getElementById('book-overlay');
             overlay.classList.remove('active');
             document.body.style.overflow = '';
+            clearBookAutoAdvance();
             const media = document.querySelector('#book-page video');
             if (media) media.pause();
         }
