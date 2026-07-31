@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tumie</title>
-    <!-- Handwritten-style font for the book's messages (added) -->
+    <!-- Handwritten-style font for the book's messages -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap" rel="stylesheet">
     <style>
@@ -368,7 +368,7 @@
             transform: scale(1) rotate(var(--rot, 0deg));
         }
 
-        /* --- Flip-Book Popup (added) --- */
+        /* --- Flip-Book Popup --- */
         .book {
             position: relative;
             width: min(92vw, 540px);
@@ -416,7 +416,6 @@
             white-space: pre-line;
         }
 
-        /* First page of the book - just a message, no media (added) */
         .book-cover-page {
             align-items: center;
             justify-content: center;
@@ -664,7 +663,7 @@
         <div class="burst-slide-wrap" id="burst-slide-wrap"></div>
     </div>
 
-    <!-- Flip-Book Popup (added) - press Card 2 to open a book; each page holds a photo/video and a message -->
+    <!-- Flip-Book Popup -->
     <div class="lightbox-overlay" id="book-overlay">
         <button class="lightbox-arrow lightbox-prev" onclick="turnPage(-1)">&#10094;</button>
         <div class="book" id="book">
@@ -674,13 +673,13 @@
         <div class="lightbox-counter" id="book-page-counter"></div>
     </div>
 
-    <!-- Finale Jersey Graphic -->
+    <!-- Finale Jersey Graphic (Task 6: Font sizes increased by 40%) -->
     <div class="finale-overlay" id="finale-overlay">
         <!-- Fireworks canvas -->
         <canvas id="firework-canvas" class="firework-canvas"></canvas>
-        <svg class="finale-svg" viewBox="0 0 400 340" xmlns="http://www.w3.org/2000/svg">
+        <svg class="finale-svg" viewBox="0 0 400 360" xmlns="http://www.w3.org/2000/svg">
             <defs>
-                <path id="finale-arc" d="M 30,110 Q 200,10 370,110" fill="transparent" />
+                <path id="finale-arc" d="M 30,120 Q 200,10 370,120" fill="transparent" />
 
                 <!-- Photo mosaic used to fill the lettering -->
                 <pattern id="finale-collage" patternUnits="objectBoundingBox" patternContentUnits="objectBoundingBox" width="1" height="1">
@@ -692,21 +691,21 @@
                     <image href="pics/burst/6.jpeg" x="0.6667" y="0.5" width="0.3333" height="0.5" preserveAspectRatio="xMidYMid slice" />
                 </pattern>
             </defs>
-            <!-- Arched name -->
-            <text font-family="Arial Black, Arial, sans-serif" font-size="46" font-weight="900"
-                  fill="#000" stroke="#000" stroke-width="10">
+            <!-- Arched name (Task 6: font-size 46 -> 64.4) -->
+            <text font-family="Arial Black, Arial, sans-serif" font-size="64.4" font-weight="900"
+                  fill="#000" stroke="#000" stroke-width="12">
                 <textPath href="#finale-arc" startOffset="50%" text-anchor="middle">TUMIE&#10084;&#65039;</textPath>
             </text>
-            <text font-family="Arial Black, Arial, sans-serif" font-size="46" font-weight="900"
-                  fill="url(#finale-collage)" stroke="#fff" stroke-width="4">
+            <text font-family="Arial Black, Arial, sans-serif" font-size="64.4" font-weight="900"
+                  fill="url(#finale-collage)" stroke="#fff" stroke-width="5">
                 <textPath href="#finale-arc" startOffset="50%" text-anchor="middle">TUMIE&#10084;&#65039;</textPath>
             </text>
 
-            <!-- Big number -->
-            <text x="200" y="300" text-anchor="middle" font-family="Arial Black, Arial, sans-serif"
-                  font-size="180" font-weight="900" fill="#000" stroke="#000" stroke-width="12">23</text>
-            <text x="200" y="300" text-anchor="middle" font-family="Arial Black, Arial, sans-serif"
-                  font-size="180" font-weight="900" fill="url(#finale-collage)" stroke="#fff" stroke-width="5">23</text>
+            <!-- Big number (Task 6: font-size 180 -> 252) -->
+            <text x="200" y="325" text-anchor="middle" font-family="Arial Black, Arial, sans-serif"
+                  font-size="252" font-weight="900" fill="#000" stroke="#000" stroke-width="14">23</text>
+            <text x="200" y="325" text-anchor="middle" font-family="Arial Black, Arial, sans-serif"
+                  font-size="252" font-weight="900" fill="url(#finale-collage)" stroke="#fff" stroke-width="6">23</text>
         </svg>
     </div>
 
@@ -756,8 +755,7 @@
             ]
         };
 
-        // Pages for the flip-book popup (added) - each page is a photo or video plus a message
-        // Add / rename entries here - each key matches an onclick="openBook('key')" on a card
+        // Pages for the flip-book popup
         const bookShows = {
             crazyBook: [
                 { type: 'message', message: 'For Tumie...\n\nthese pages are filled with songs that remind me of you \nwhat i would do for you \nand what id like to achieve with you' },
@@ -781,7 +779,6 @@
             pageEl.innerHTML = '';
 
             if (page.type === 'message') {
-                // Text-only opening page (added) - no photo/video, just the message
                 pageEl.classList.add('book-cover-page');
                 const message = document.createElement('p');
                 message.className = 'book-message book-cover-message';
@@ -795,6 +792,7 @@
                 if (page.type === 'video') {
                     media.controls = true;
                     media.playsInline = true;
+                    media.muted = true; // Mutes videos playing inside the book
                 } else {
                     media.alt = 'Memory ' + (index + 1);
                 }
@@ -806,22 +804,17 @@
                 pageEl.appendChild(media);
                 pageEl.appendChild(message);
 
-                // Autoplay the video the moment its page is shown (added)
                 if (page.type === 'video') {
-                    media.play().catch(() => {
-                        // Autoplay blocked - the visible controls let her press play manually
-                    });
+                    media.play().catch(() => {});
                 }
             }
 
             const counter = document.getElementById('book-page-counter');
             if (counter) counter.textContent = (index + 1) + ' / ' + bookPages.length;
 
-            // Schedule the automatic flip to the next page (added)
             scheduleBookAutoAdvance();
         }
 
-        // Images auto-flip after 3s; videos wait until they finish playing (added)
         function scheduleBookAutoAdvance() {
             clearBookAutoAdvance();
 
@@ -829,10 +822,9 @@
             const page = bookPages[currentBookPage];
             const media = document.querySelector('#book-page video');
 
-            // On the last page, close the whole book once it's done instead of turning further (added)
             const advance = () => {
                 if (isLastPage) {
-                    closeBook();
+                    closeBook(); // Automatically closes the book when the last page finishes
                 } else {
                     turnPage(1);
                 }
@@ -861,12 +853,18 @@
         function turnPage(direction) {
             if (bookPages.length === 0) return;
             const total = bookPages.length;
+
+            // If manually clicking next on the final page, close the book cleanly
+            if (direction > 0 && currentBookPage === total - 1) {
+                closeBook();
+                return;
+            }
+
             const nextIndex = (currentBookPage + direction + total) % total;
             const pageEl = document.getElementById('book-page');
 
             clearBookAutoAdvance();
 
-            // Pause any video on the current page before it turns away (added)
             const currentMedia = pageEl.querySelector('video');
             if (currentMedia) currentMedia.pause();
 
@@ -900,7 +898,6 @@
             if (media) media.pause();
         }
 
-        // Click the dark backdrop or press Escape to close the book (added)
         document.getElementById('book-overlay').addEventListener('click', (e) => {
             if (e.target.id === 'book-overlay') closeBook();
         });
@@ -1456,7 +1453,7 @@
             setTimeout(() => heart.remove(), 1200);
         });
 
-        /* --- Ambient Floating Heart Background Canvas --- */
+        /* --- Task 2: Ambient Floating Heart Background Canvas --- */
         function initAmbientCanvas() {
             const canvas = document.getElementById('ambient-canvas');
             if (!canvas) return;
